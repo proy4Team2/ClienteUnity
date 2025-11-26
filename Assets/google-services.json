@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "182398444825",
+    "project_id": "pro4db",
+    "storage_bucket": "pro4db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:182398444825:android:8fd84e7e71a941a8865188",
+        "android_client_info": {
+          "package_name": "com.Team2.VRSpeech"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbJHa-5JWeKThtF9nfxDVxNhOcHykT7G8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
