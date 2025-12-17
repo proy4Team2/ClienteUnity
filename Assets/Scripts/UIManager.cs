@@ -12,9 +12,20 @@ public class UIManager : MonoBehaviour
         UIDetailsMenu.SetActive(false);
     }
 
-    public void LoginClicked()
+    public void LoginToMain()
     {
         UILogin.SetActive(false);
+        UIMainMenu.SetActive(true);
+    }
+
+    public void MainToDetails()
+    {
+        UIDetailsMenu.SetActive(true);
+        UIMainMenu.SetActive(false);
+    }
+    public void DetailsToMain()
+    {
+        UIDetailsMenu.SetActive(false);
         UIMainMenu.SetActive(true);
     }
 }
