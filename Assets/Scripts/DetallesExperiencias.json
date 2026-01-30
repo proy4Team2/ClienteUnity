@@ -1,0 +1,17 @@
+{
+    [
+        {
+            "title": "Entrevista",
+            "number": "1 Persona",
+            "type": "Formal",
+            "description": "Realiza una entrevista laboral desde el punto de vista de un aplicante junior, buscando empezar a entrar al mercado laboral."
+        },
+        {
+            "title": "Reunión",
+            "number": "Varias Personas",
+            "type": "Formal",
+            "description": "Participa en una reunión de trabajo con compañeros."
+        }
+    ]
+
+}
