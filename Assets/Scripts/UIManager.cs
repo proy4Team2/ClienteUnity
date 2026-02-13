@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -10,6 +11,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] TMP_Text DetsTitle, DetsPeople, DetsType, DetsDescript;
     [SerializeField] Button DetsStart;
     [SerializeField] TMP_Dropdown DifSelector;
+    [SerializeField] CameraFadeManager FadeManager;
     private string _sceneName, _sceneDif;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -63,6 +65,16 @@ public class UIManager : MonoBehaviour
         _sceneDif = DifSelector.options[DifSelector.value].text;
         if (_sceneName == "") { Debug.Log("ERROR: Escena inválida seleccionada"); return;}
         Debug.Log(_sceneName + " " + _sceneDif);
+        StartCoroutine(TPFadeOut());
+    }
+
+    private IEnumerator TPFadeOut()
+    {
+        yield return FadeManager.fadeOut();
+        doTP();
+    }
+    private void doTP()
+    {
         SceneManager.LoadScene(_sceneName + " " + _sceneDif);
     }
 }
