@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-public class UIManager : MonoBehaviour
+public class UIManagerMenu : MonoBehaviour
 {
     [SerializeField] GameObject UILogin, UIMainMenu, UIDetailsMenu;
     [SerializeField] TMP_Text DetsTitle, DetsPeople, DetsType, DetsDescript;
