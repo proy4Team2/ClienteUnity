@@ -196,6 +196,17 @@ public partial class @Controls: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""866391e8-9111-4914-a2cd-cac2c4049852"",
+                    ""path"": ""<Keyboard>/x"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Talk"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""eca909b4-db20-4f74-86ec-48d30a34f031"",
                     ""path"": ""<Keyboard>/space"",
                     ""interactions"": """",
