@@ -37,6 +37,9 @@ namespace Convai.Scripts.Runtime.Core
         private ConvaiChatUIHandler _chatUIHandler;
         private string _currentTranscript;
         private string _isFinalUserQueryTextBuffer = "";
+        
+        public static event Action<float[], int> OnPlayerAudioCaptured;
+        public static event Action<float[], int> OnNPCAudioCaptured;
 
         private void Awake()
         {
@@ -463,6 +466,9 @@ namespace Convai.Scripts.Runtime.Core
         {
             if (diff > 0)
             {
+                float[] samples = new float[diff];
+                for (int i = 0; i < diff; i++) samples[i] = audioData[i];
+                OnPlayerAudioCaptured?.Invoke(samples, 44100); // Convai usa 44100 por defecto para grabación
                 // Convert audio data to byte array
                 byte[] audioByteArray = new byte[diff * sizeof(short)];
 
@@ -682,6 +688,15 @@ namespace Convai.Scripts.Runtime.Core
                     : LipSyncBlendFrameData.FrameType.Blendshape;
 
                 lipSyncBlendFrameQueue.Enqueue(new LipSyncBlendFrameData((int)(WavUtility.CalculateDurationSeconds(wavBytes) * 30), result, frameType));
+            }
+
+            // Hook for recording
+            ConvaiNPC targetNpc = NPCToSendResponse(npc);
+            if (targetNpc != null && targetNpc.AudioManager != null)
+            {
+                float[] samples = targetNpc.AudioManager.ProcessByteAudioDataToAudioClip(result.AudioResponse);
+                int rate = result.AudioResponse.AudioConfig?.SampleRateHertz ?? 44100;
+                if (samples != null) OnNPCAudioCaptured?.Invoke(samples, rate);
             }
         }
 

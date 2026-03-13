@@ -9,7 +9,10 @@ public class ApiClient : MonoBehaviour {
     public string baseUrl = "http://localhost:3000"; 
 
     private void Awake() {
-        if (Instance == null) Instance = this;
+        if (Instance == null) {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
         else Destroy(gameObject);
     }
 
@@ -22,7 +25,8 @@ public class ApiClient : MonoBehaviour {
         string endpoint = $"{baseUrl}/api/sessions";
         WWWForm form = new WWWForm();
         form.AddField("language", language);
-        form.AddBinaryData("audio", audioData, "recording.m4a", "audio/mp4");
+        //form.AddBinaryData("audio", audioData, "recording.m4a", "audio/mp4");
+        form.AddBinaryData("audio", audioData, "recordir.wav", "audio/wav");
 
         using (UnityWebRequest request = UnityWebRequest.Post(endpoint, form)) {
             request.SetRequestHeader("Authorization", $"Bearer {token}");
