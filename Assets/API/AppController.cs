@@ -114,7 +114,8 @@ public class AppController : MonoBehaviour
         display += "<size=120%><b>Metrics:</b></size>\n";
         display += $"• Speed: {response.data.quality.speakingRateWPM} WPM\n";
         display += $"• Fillers: {response.data.quality.fillerPercentage}%\n";
-        display += $"• Confidence: {(response.data.quality.avgConfidence * 100):F0}%\n\n";
+        display += $"• Confidence: {(response.data.quality.avgConfidence * 100):F0}%\n";
+        display += $"• Duration: {response.data.quality.duration:F1}s\n\n";
 
         // Feedback
         if (response.data.feedback.positivePoints?.Count > 0)

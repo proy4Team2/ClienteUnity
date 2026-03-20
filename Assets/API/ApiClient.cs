@@ -26,7 +26,8 @@ public class ApiClient : MonoBehaviour {
         WWWForm form = new WWWForm();
         form.AddField("language", language);
         //form.AddBinaryData("audio", audioData, "recording.m4a", "audio/mp4");
-        form.AddBinaryData("audio", audioData, "recordir.wav", "audio/wav");
+        form.AddBinaryData("audio", audioData, "recording.wav", "audio/wav");
+        Debug.Log($"[ApiClient] ⬆️ Enviando {audioData.Length} bytes de audio...");
 
         using (UnityWebRequest request = UnityWebRequest.Post(endpoint, form)) {
             request.SetRequestHeader("Authorization", $"Bearer {token}");

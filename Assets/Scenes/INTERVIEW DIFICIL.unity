@@ -2340,7 +2340,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1bf565bc3cdcb714a8cedbed97e378ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sampleRate: 16000
+  sampleRate: 44100
   maxDurationSec: 600
   autoUploadOnStop: 1
   language: es

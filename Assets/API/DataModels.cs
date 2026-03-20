@@ -16,18 +16,29 @@ public class AnalysisResponse
 public class AnalysisData
 {
     [JsonProperty("transcript")] public string          transcript;
+    [JsonProperty("metrics")]    public TechnicalMetrics metrics; // <--- Added!
     [JsonProperty("feedback")]   public ServerFeedback  feedback;
 
     // AppController usa response.data.quality — lo construimos
     // desde las métricas que devuelve el servidor dentro del feedback
     public QualityMetrics quality => new QualityMetrics
     {
-        speakingRateWPM  = feedback?.oratory_expert?.score ?? 0,
+        speakingRateWPM  = metrics?.wpm ?? 0,
         fillerPercentage = 0f,
-        pausePercentage  = 0f,
-        avgConfidence    = feedback?.oratory_expert?.score / 100f ?? 0f,
-        duration         = 0f
+        pausePercentage  = metrics?.pause_percentage ?? 0f,
+        avgConfidence    = (float)(metrics?.average_confidence ?? 0f),
+        duration         = metrics?.duration_seconds ?? 0f
     };
+}
+
+[Serializable]
+public class TechnicalMetrics
+{
+    [JsonProperty("duration_seconds")]  public float duration_seconds;
+    [JsonProperty("word_count")]       public int   word_count;
+    [JsonProperty("wpm")]              public float wpm;
+    [JsonProperty("pause_percentage")] public float pause_percentage;
+    [JsonProperty("average_confidence")] public float average_confidence;
 }
 
 // ── Estructura real del servidor ──────────────────────────────────

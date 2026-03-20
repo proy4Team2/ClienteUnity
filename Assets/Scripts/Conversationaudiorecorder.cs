@@ -34,7 +34,7 @@ public class Conversationaudiorecorder : MonoBehaviour
         // ATAJO DE TECLADO: Pulsa la tecla 'U' para subir manualmente
         if (Input.GetKeyDown(KeyCode.U))
         {
-            Debug.Log("[ConversationRecorder] ⌨️ Tecla 'U' detectada. Forzando subida...");
+            Debug.Log("[ConversationRecorder] Tecla 'U' detectada. Forzando subida...");
             StopAndUploadInternal();
         }
     }
@@ -65,7 +65,11 @@ public class Conversationaudiorecorder : MonoBehaviour
     private void HandlePlayerAudio(float[] samples, int rate)
     {
         if (!_isRecording) return;
-        WriteToBuffer(Resample(samples, rate, sampleRate));
+        if (samples != null && samples.Length > 0)
+        {
+            // Debug.Log($"[ConversationRecorder] Capturado audio del jugador: {samples.Length} muestras.");
+            WriteToBuffer(Resample(samples, rate, sampleRate));
+        }
     }
 
     private void HandleNpcAudio(float[] samples, int rate)
@@ -156,7 +160,7 @@ public class Conversationaudiorecorder : MonoBehaviour
         try
         {
             File.WriteAllBytes(_exportPath, wavData);
-            Debug.Log($"[ConversationRecorder] ✅ WAV guardado: {_exportPath} ({finalSamples.Length / (float)sampleRate:F1}s)");
+            Debug.Log($"[ConversationRecorder] ✅ WAV guardado: {_exportPath} ({wavData.Length} bytes, {finalSamples.Length / (float)sampleRate:F1}s)");
         }
         catch (Exception e)
         {
@@ -198,26 +202,50 @@ public class Conversationaudiorecorder : MonoBehaviour
     {
         using (MemoryStream stream = new MemoryStream())
         {
-            using (BinaryWriter writer = new BinaryWriter(stream))
+            using (BinaryWriter writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
             {
-                int dataSize = samples.Length * 2;
-                writer.Write(new char[4] { 'R', 'I', 'F', 'F' });
+                int bitsPerSample = 16;
+                int bytesPerSample = bitsPerSample / 8;
+                int dataSize = samples.Length * bytesPerSample;
+
+                // 1. Chunk ID: "RIFF"
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+                // 2. Chunk Size: 36 + dataSize
                 writer.Write(36 + dataSize);
-                writer.Write(new char[4] { 'W', 'A', 'V', 'E' });
-                writer.Write(new char[4] { 'f', 'm', 't', ' ' });
+                // 3. Format: "WAVE"
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+
+                // 4. Sub-chunk 1 ID: "fmt "
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+                // 5. Sub-chunk 1 Size: 16 (for PCM)
                 writer.Write(16);
+                // 6. Audio Format: 1 (PCM)
                 writer.Write((short)1);
+                // 7. Num Channels: 1 (Mono)
                 writer.Write((short)channels);
+                // 8. Sample Rate
                 writer.Write(rate);
-                writer.Write(rate * channels * 2);
-                writer.Write((short)(channels * 2));
-                writer.Write((short)16);
-                writer.Write(new char[4] { 'd', 'a', 't', 'a' });
+                // 9. Byte Rate: rate * channels * bytesPerSample
+                writer.Write(rate * channels * bytesPerSample);
+                // 10. Block Align: channels * bytesPerSample
+                writer.Write((short)(channels * bytesPerSample));
+                // 11. Bits Per Sample
+                writer.Write((short)bitsPerSample);
+
+                // 12. Sub-chunk 2 ID: "data"
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+                // 13. Sub-chunk 2 Size
                 writer.Write(dataSize);
+
+                // 14. Audio Data
                 for (int i = 0; i < samples.Length; i++)
-                    writer.Write((short)(samples[i] * short.MaxValue));
+                {
+                    writer.Write((short)(Mathf.Clamp(samples[i], -1f, 1f) * short.MaxValue));
+                }
+                
+                writer.Flush();
+                return stream.ToArray();
             }
-            return stream.ToArray();
         }
     }
 }
