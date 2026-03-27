@@ -16,13 +16,23 @@ public class Conversationaudiorecorder : MonoBehaviour
 
     private float[] _masterBuffer;
     private int _bufferWriteIndex = 0;
-    private float _startTime;
+    private System.Diagnostics.Stopwatch _recordingStopwatch = new System.Diagnostics.Stopwatch();
     private bool _isRecording = false;
     private string _exportPath;
-    
+    private readonly object _lock = new object();
+
+    /// <summary>Expuesto para que NpcAudioCapture pueda consultarlo.</summary>
+    public bool IsRecording => _isRecording;
+
     [Header("Automatización")]
     [Tooltip("¿Subir automáticamente al servidor al detener la grabación?")]
     public bool autoUploadOnStop = true;
+
+    [Header("Configuración de Servidor")]
+    [Tooltip("Idioma de la conversación para el análisis.")]
+    public string language = "es";
+
+    // ── Lifecycle ─────────────────────────────────────────────────────
 
     private void Start()
     {
@@ -31,7 +41,7 @@ public class Conversationaudiorecorder : MonoBehaviour
 
     private void Update()
     {
-        // ATAJO DE TECLADO: Pulsa la tecla 'U' para subir manualmente
+        // ATAJO DE TECLADO: Pulsa 'U' para subir manualmente
         if (Input.GetKeyDown(KeyCode.U))
         {
             Debug.Log("[ConversationRecorder] Tecla 'U' detectada. Forzando subida...");
@@ -41,15 +51,17 @@ public class Conversationaudiorecorder : MonoBehaviour
 
     private void OnEnable()
     {
+        // Solo el audio del jugador se suscribe aquí.
+        // El audio del NPC se captura a través de NpcAudioCapture + OnAudioFilterRead.
         ConvaiGRPCAPI.OnPlayerAudioCaptured += HandlePlayerAudio;
-        ConvaiGRPCAPI.OnNPCAudioCaptured += HandleNpcAudio;
     }
 
     private void OnDisable()
     {
         ConvaiGRPCAPI.OnPlayerAudioCaptured -= HandlePlayerAudio;
-        ConvaiGRPCAPI.OnNPCAudioCaptured -= HandleNpcAudio;
     }
+
+    // ── Grabación ─────────────────────────────────────────────────────
 
     public void StartRecording()
     {
@@ -58,52 +70,54 @@ public class Conversationaudiorecorder : MonoBehaviour
         Debug.Log("[ConversationRecorder] ▶ Iniciando grabación de conversación...");
         _masterBuffer = new float[sampleRate * maxDurationSec];
         _bufferWriteIndex = 0;
-        _startTime = Time.time;
+        _recordingStopwatch.Restart();
         _isRecording = true;
     }
 
+    // ── Callbacks de audio ────────────────────────────────────────────
+
     private void HandlePlayerAudio(float[] samples, int rate)
     {
-        if (!_isRecording) return;
-        if (samples != null && samples.Length > 0)
-        {
-            // Debug.Log($"[ConversationRecorder] Capturado audio del jugador: {samples.Length} muestras.");
-            WriteToBuffer(Resample(samples, rate, sampleRate));
-        }
-    }
-
-    private void HandleNpcAudio(float[] samples, int rate)
-    {
-        if (!_isRecording) return;
+        if (!_isRecording || samples == null || samples.Length == 0) return;
         WriteToBuffer(Resample(samples, rate, sampleRate));
     }
 
+    /// <summary>
+    /// Llamado por NpcAudioCapture desde el hilo de audio de Unity.
+    /// Thread-safe: solo escribe en el buffer de floats (operación atómica por índice).
+    /// </summary>
+    public void WriteNpcSamples(float[] samples, int rate)
+    {
+        if (!_isRecording || samples == null || samples.Length == 0) return;
+        WriteToBuffer(Resample(samples, rate, sampleRate));
+    }
+
+    // ── Buffer ────────────────────────────────────────────────────────
+
     private void WriteToBuffer(float[] samples)
     {
-        // Calculamos la posición basada en el tiempo real para mantener el ritmo
-        int targetIndex = (int)((Time.time - _startTime) * sampleRate);
+        double elapsedSeconds = _recordingStopwatch.Elapsed.TotalSeconds;
+        int targetIndex = (int)(elapsedSeconds * sampleRate);
         
-        if (targetIndex < _bufferWriteIndex) targetIndex = _bufferWriteIndex;
-
-        for (int i = 0; i < samples.Length; i++)
+        lock (_lock)
         {
-            int idx = targetIndex + i;
-            if (idx < _masterBuffer.Length)
+            if (targetIndex < _bufferWriteIndex) targetIndex = _bufferWriteIndex;
+
+            for (int i = 0; i < samples.Length; i++)
             {
-                _masterBuffer[idx] = Mathf.Clamp(_masterBuffer[idx] + samples[i], -1f, 1f);
-                if (idx > _bufferWriteIndex) _bufferWriteIndex = idx;
+                int idx = targetIndex + i;
+                if (idx < _masterBuffer.Length)
+                {
+                    _masterBuffer[idx] = Mathf.Clamp(_masterBuffer[idx] + samples[i], -1f, 1f);
+                    if (idx > _bufferWriteIndex) _bufferWriteIndex = idx;
+                }
             }
         }
     }
 
-    [Header("Configuración de Servidor")]
-    [Tooltip("Idioma de la conversación para el análisis.")]
-    public string language = "es";
+    // ── Stop & Upload ─────────────────────────────────────────────────
 
-    public void StopAndUploadButton()
-    {
-        StopAndUploadInternal();
-    }
+    public void StopAndUploadButton() => StopAndUploadInternal();
 
     private void StopAndUploadInternal()
     {
@@ -120,35 +134,38 @@ public class Conversationaudiorecorder : MonoBehaviour
         }
 
         Debug.Log("[ConversationRecorder] 📤 Subiendo audio al servidor...");
-        // Usamos la instancia de ApiClient para que la corrutina persista aunque este objeto se destruya
         ApiClient.Instance.StartCoroutine(ApiClient.Instance.UploadAudioSession(
-            wavData, token, language,
-            (response) => {
-                Debug.Log("[ConversationRecorder] ✅ Sesión: " + response.sessionId);
+            wavData,
+            token,
+            language,
+            (response) =>
+            {
+                Debug.Log("[ConversationRecorder] ✅ Subida completada. ID Sesión: " + response.sessionId);
 
+                // Mostrar resultados en UI si existe el manager en escena
                 var ui = FindObjectOfType<UIManagerResult>();
                 if (ui != null) ui.DisplayResults(response);
             },
-            (error) => Debug.LogError("[ConversationRecorder] ❌ " + error)
+            (error) => Debug.LogError("[ConversationRecorder] ❌ Error en la subida: " + error)
         ));
     }
 
     public string StopAndSave()
     {
-        if (!_isRecording) 
+        if (!_isRecording)
         {
             Debug.LogWarning("[ConversationRecorder] ⚠️ StopAndSave llamado pero no se estaba grabando.");
             return null;
         }
         _isRecording = false;
+        _recordingStopwatch.Stop();
 
         if (_bufferWriteIndex <= 0)
         {
-            Debug.LogError("[ConversationRecorder] ❌ No se capturó NADA de audio. ¿Pulsaste 'Start' y hablaste con el NPC?");
+            Debug.LogError("[ConversationRecorder] ❌ No se capturó NADA de audio.");
             return null;
         }
 
-        // Truncar al tamaño real
         float[] finalSamples = new float[_bufferWriteIndex + 1];
         Array.Copy(_masterBuffer, finalSamples, _bufferWriteIndex + 1);
 
@@ -172,12 +189,14 @@ public class Conversationaudiorecorder : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (_isRecording) 
+        if (_isRecording)
         {
             if (autoUploadOnStop) StopAndUploadInternal();
             else StopAndSave();
         }
     }
+
+    // ── DSP ───────────────────────────────────────────────────────────
 
     private float[] Resample(float[] input, int fromRate, int toRate)
     {
@@ -200,51 +219,33 @@ public class Conversationaudiorecorder : MonoBehaviour
     private byte[] EncodeWav(float[] samples, int rate, int channels)
     {
         using (MemoryStream stream = new MemoryStream())
+        using (BinaryWriter writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
         {
-            using (BinaryWriter writer = new BinaryWriter(stream, System.Text.Encoding.UTF8))
-            {
-                int bitsPerSample = 16;
-                int bytesPerSample = bitsPerSample / 8;
-                int dataSize = samples.Length * bytesPerSample;
+            int bitsPerSample = 16;
+            int bytesPerSample = bitsPerSample / 8;
+            int dataSize = samples.Length * bytesPerSample;
 
-                // 1. Chunk ID: "RIFF"
-                writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
-                // 2. Chunk Size: 36 + dataSize
-                writer.Write(36 + dataSize);
-                // 3. Format: "WAVE"
-                writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+            writer.Write(36 + dataSize);
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
 
-                // 4. Sub-chunk 1 ID: "fmt "
-                writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
-                // 5. Sub-chunk 1 Size: 16 (for PCM)
-                writer.Write(16);
-                // 6. Audio Format: 1 (PCM)
-                writer.Write((short)1);
-                // 7. Num Channels: 1 (Mono)
-                writer.Write((short)channels);
-                // 8. Sample Rate
-                writer.Write(rate);
-                // 9. Byte Rate: rate * channels * bytesPerSample
-                writer.Write(rate * channels * bytesPerSample);
-                // 10. Block Align: channels * bytesPerSample
-                writer.Write((short)(channels * bytesPerSample));
-                // 11. Bits Per Sample
-                writer.Write((short)bitsPerSample);
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+            writer.Write(16);
+            writer.Write((short)1);
+            writer.Write((short)channels);
+            writer.Write(rate);
+            writer.Write(rate * channels * bytesPerSample);
+            writer.Write((short)(channels * bytesPerSample));
+            writer.Write((short)bitsPerSample);
 
-                // 12. Sub-chunk 2 ID: "data"
-                writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
-                // 13. Sub-chunk 2 Size
-                writer.Write(dataSize);
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+            writer.Write(dataSize);
 
-                // 14. Audio Data
-                for (int i = 0; i < samples.Length; i++)
-                {
-                    writer.Write((short)(Mathf.Clamp(samples[i], -1f, 1f) * short.MaxValue));
-                }
-                
-                writer.Flush();
-                return stream.ToArray();
-            }
+            for (int i = 0; i < samples.Length; i++)
+                writer.Write((short)(Mathf.Clamp(samples[i], -1f, 1f) * short.MaxValue));
+
+            writer.Flush();
+            return stream.ToArray();
         }
     }
 }
