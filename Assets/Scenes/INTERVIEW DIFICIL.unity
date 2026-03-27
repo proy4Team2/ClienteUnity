@@ -451,6 +451,7 @@ GameObject:
   - component: {fileID: 224710083}
   - component: {fileID: 224710082}
   - component: {fileID: 224710087}
+  - component: {fileID: 224710088}
   m_Layer: 0
   m_Name: AppManager
   m_TagString: Untagged
@@ -525,6 +526,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firebaseWebApiKey: AIzaSyBpRKS_2G4L_r6YwWsLB357DMGHqjpYQiE
+--- !u!114 &224710088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 224710081}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 583db4a988ee9714093f139f70b86dab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  resultsPanel: {fileID: 0}
+  transcriptText: {fileID: 0}
+  oratoryScoreText: {fileID: 0}
+  oratorySummaryText: {fileID: 0}
+  oratoryStrengthsText: {fileID: 0}
+  oratoryWeaknessesText: {fileID: 0}
+  oratoryPacingText: {fileID: 0}
+  recruiterPassedText: {fileID: 0}
+  recruiterRationaleText: {fileID: 0}
+  recruiterStarText: {fileID: 0}
+  recruiterSoftSkillsText: {fileID: 0}
+  recruiterRedFlagsText: {fileID: 0}
+  improvementImmediateText: {fileID: 0}
+  improvementLongTermText: {fileID: 0}
+  sessionIdText: {fileID: 0}
 --- !u!1 &273792900
 GameObject:
   m_ObjectHideFlags: 0

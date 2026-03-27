@@ -122,15 +122,14 @@ public class Conversationaudiorecorder : MonoBehaviour
         Debug.Log("[ConversationRecorder] 📤 Subiendo audio al servidor...");
         // Usamos la instancia de ApiClient para que la corrutina persista aunque este objeto se destruya
         ApiClient.Instance.StartCoroutine(ApiClient.Instance.UploadAudioSession(
-            wavData, 
-            token, 
-            language, 
+            wavData, token, language,
             (response) => {
-                Debug.Log("[ConversationRecorder] ✅ Subida completada con éxito. ID Sesión: " + response.sessionId);
+                Debug.Log("[ConversationRecorder] ✅ Sesión: " + response.sessionId);
+
+                var ui = FindObjectOfType<UIManagerResult>();
+                if (ui != null) ui.DisplayResults(response);
             },
-            (error) => {
-                Debug.LogError("[ConversationRecorder] ❌ Error en la subida: " + error);
-            }
+            (error) => Debug.LogError("[ConversationRecorder] ❌ " + error)
         ));
     }
 
