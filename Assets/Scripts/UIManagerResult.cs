@@ -122,4 +122,22 @@ public class UIManagerResult : MonoBehaviour
             sb.AppendLine($"• {item}");
         return sb.ToString().TrimEnd();
     }
+
+    public void getJsonContents(string jsonString)
+    {
+        results = JsonUtility.FromJson<ResultsClass>(jsonString);
+        UIRes1.transform.Find("Resumen").gameObject.GetComponent<TMP_Text>().text = "RESUMEN:" + results.summary;
+        UIRes1.transform.Find("PuntosF").gameObject.GetComponent<TMP_Text>().text = "PUNTOS FUERTES\n" + results.strengths;
+        UIRes1.transform.Find("PuntosD").gameObject.GetComponent<TMP_Text>().text = "PUNTOS D�BILES\n" + results.weaknesses;
+        UIRes1.transform.Find("Puntuaci�n").gameObject.GetComponent<TMP_Text>().text = "PUNTUACI�N: " + results.score.ToString();
+
+        UIRes2.transform.Find("Veredicto").gameObject.GetComponent<TMP_Text>().text = "VEREDICTO: " + (results.passed ? "Aprobado" : "No aprobado");
+        UIRes2.transform.Find("Justificacion").gameObject.GetComponent<TMP_Text>().text = "JUSTIFICACI�N: " + results.decision_rationale;
+        UIRes2.transform.Find("Soft Skills").gameObject.GetComponent<TMP_Text>().text = "SOFT SKILLS\n" + results.soft_skills;
+        UIRes2.transform.Find("Red Flags").gameObject.GetComponent<TMP_Text>().text = "RED FLAGS\n" + results.red_flags;
+        UIRes2.transform.Find("STAR").gameObject.GetComponent<TMP_Text>().text = "M�TODO STAR: " + results.star_method_check;
+
+        UIMejora.transform.Find("CortoPText").gameObject.GetComponent<TMP_Text>().text = results.immediate_action;
+        UIMejora.transform.Find("LargoPtext").gameObject.GetComponent<TMP_Text>().text = results.long_term_advice;
+    }
 }
