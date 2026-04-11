@@ -14,8 +14,10 @@ public class Conversationaudiorecorder : MonoBehaviour
     [Tooltip("Duración máxima de la grabación en segundos.")]
     public int maxDurationSec = 3600; // 1 hora
 
-    private float[] _masterBuffer;
-    private int _bufferWriteIndex = 0;
+    private float[] _playerBuffer;
+    private float[] _npcBuffer;
+    private int _playerWriteIndex = 0;
+    private int _npcWriteIndex = 0;
     private System.Diagnostics.Stopwatch _recordingStopwatch = new System.Diagnostics.Stopwatch();
     private bool _isRecording = false;
     private string _exportPath;
@@ -68,8 +70,10 @@ public class Conversationaudiorecorder : MonoBehaviour
         if (_isRecording) return;
 
         Debug.Log("[ConversationRecorder] ▶ Iniciando grabación de conversación...");
-        _masterBuffer = new float[sampleRate * maxDurationSec];
-        _bufferWriteIndex = 0;
+        _playerBuffer = new float[sampleRate * maxDurationSec];
+        _npcBuffer = new float[sampleRate * maxDurationSec];
+        _playerWriteIndex = 0;
+        _npcWriteIndex = 0;
         _recordingStopwatch.Restart();
         _isRecording = true;
     }
@@ -79,7 +83,7 @@ public class Conversationaudiorecorder : MonoBehaviour
     private void HandlePlayerAudio(float[] samples, int rate)
     {
         if (!_isRecording || samples == null || samples.Length == 0) return;
-        WriteToBuffer(Resample(samples, rate, sampleRate));
+        WriteToBuffer(Resample(samples, rate, sampleRate), true);
     }
 
     /// <summary>
@@ -89,27 +93,42 @@ public class Conversationaudiorecorder : MonoBehaviour
     public void WriteNpcSamples(float[] samples, int rate)
     {
         if (!_isRecording || samples == null || samples.Length == 0) return;
-        WriteToBuffer(Resample(samples, rate, sampleRate));
+        WriteToBuffer(Resample(samples, rate, sampleRate), false);
     }
 
     // ── Buffer ────────────────────────────────────────────────────────
 
-    private void WriteToBuffer(float[] samples)
+    private void WriteToBuffer(float[] samples, bool isPlayer)
     {
         double elapsedSeconds = _recordingStopwatch.Elapsed.TotalSeconds;
         int targetIndex = (int)(elapsedSeconds * sampleRate);
         
         lock (_lock)
         {
-            if (targetIndex < _bufferWriteIndex) targetIndex = _bufferWriteIndex;
-
-            for (int i = 0; i < samples.Length; i++)
+            if (isPlayer)
             {
-                int idx = targetIndex + i;
-                if (idx < _masterBuffer.Length)
+                if (targetIndex < _playerWriteIndex) targetIndex = _playerWriteIndex;
+                for (int i = 0; i < samples.Length; i++)
                 {
-                    _masterBuffer[idx] = Mathf.Clamp(_masterBuffer[idx] + samples[i], -1f, 1f);
-                    if (idx > _bufferWriteIndex) _bufferWriteIndex = idx;
+                    int idx = targetIndex + i;
+                    if (idx < _playerBuffer.Length)
+                    {
+                        _playerBuffer[idx] = Mathf.Clamp(_playerBuffer[idx] + samples[i], -1f, 1f);
+                        if (idx > _playerWriteIndex) _playerWriteIndex = idx;
+                    }
+                }
+            }
+            else
+            {
+                if (targetIndex < _npcWriteIndex) targetIndex = _npcWriteIndex;
+                for (int i = 0; i < samples.Length; i++)
+                {
+                    int idx = targetIndex + i;
+                    if (idx < _npcBuffer.Length)
+                    {
+                        _npcBuffer[idx] = Mathf.Clamp(_npcBuffer[idx] + samples[i], -1f, 1f);
+                        if (idx > _npcWriteIndex) _npcWriteIndex = idx;
+                    }
                 }
             }
         }
@@ -141,10 +160,7 @@ public class Conversationaudiorecorder : MonoBehaviour
             (response) =>
             {
                 Debug.Log("[ConversationRecorder] ✅ Subida completada. ID Sesión: " + response.sessionId);
-
-                // Mostrar resultados en UI si existe el manager en escena
-                var ui = FindObjectOfType<UIManagerResult>();
-                if (ui != null) ui.DisplayResults(response);
+                Debug.Log("[ConversationRecorder] Resultados obtenidos:\n" + Newtonsoft.Json.JsonConvert.SerializeObject(response, Newtonsoft.Json.Formatting.Indented));
             },
             (error) => Debug.LogError("[ConversationRecorder] ❌ Error en la subida: " + error)
         ));
@@ -160,23 +176,29 @@ public class Conversationaudiorecorder : MonoBehaviour
         _isRecording = false;
         _recordingStopwatch.Stop();
 
-        if (_bufferWriteIndex <= 0)
+        int maxIndex = Mathf.Max(_playerWriteIndex, _npcWriteIndex);
+        if (maxIndex <= 0)
         {
             Debug.LogError("[ConversationRecorder] ❌ No se capturó NADA de audio.");
             return null;
         }
 
-        float[] finalSamples = new float[_bufferWriteIndex + 1];
-        Array.Copy(_masterBuffer, finalSamples, _bufferWriteIndex + 1);
+        // Archivo estéreo (2 canales). Canal 0: Player, Canal 1: NPC.
+        float[] interleaved = new float[(maxIndex + 1) * 2];
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            interleaved[i * 2] = _playerBuffer[i];
+            interleaved[i * 2 + 1] = _npcBuffer[i];
+        }
 
-        byte[] wavData = EncodeWav(finalSamples, sampleRate, 1);
+        byte[] wavData = EncodeWav(interleaved, sampleRate, 2);
         string fileName = $"Convai_Conversation_{DateTime.Now:yyyyMMdd_HHmmss}.wav";
         _exportPath = Path.Combine(Application.persistentDataPath, fileName);
 
         try
         {
             File.WriteAllBytes(_exportPath, wavData);
-            Debug.Log($"[ConversationRecorder] ✅ WAV guardado: {_exportPath} ({wavData.Length} bytes, {finalSamples.Length / (float)sampleRate:F1}s)");
+            Debug.Log($"[ConversationRecorder] ✅ WAV estéreo guardado: {_exportPath} ({wavData.Length} bytes, {(maxIndex + 1) / (float)sampleRate:F1}s)");
         }
         catch (Exception e)
         {
