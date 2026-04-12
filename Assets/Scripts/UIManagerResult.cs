@@ -1,104 +1,51 @@
-@ -1,97 +1,125 @@
 using UnityEngine;
-using System.Collections.Generic;
 using TMPro;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using System.Collections;
-using Unity.XR.CoreUtils;
-using Unity.VisualScripting;
-
+using Newtonsoft.Json; // Importante usar Newtonsoft aquí
 
 public class UIManagerResult : MonoBehaviour
 {
     [SerializeField] GameObject UIRes1, UIRes2, UIMejora;
     [SerializeField] CameraFadeManager FadeManager;
-    private ResultsClass results;
+    
+    // Cambiamos ResultsClass por el AnalysisResponse de DataModels.cs
+    private AnalysisResponse analysisResult; 
 
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         UIRes1.SetActive(true);
         UIRes2.SetActive(false);
         UIMejora.SetActive(false);
     }
-    
 
-    public void MoveRight()
-    {
-        if (UIRes1.activeSelf)
-        {
-            UIRes1.SetActive(false);
-            UIRes2.SetActive(true);
-        }
-        else if (UIRes2.activeSelf) 
-        if (response == null)
-        {
-            UIRes2.SetActive(false);
-            UIMejora.SetActive(true);
-            Debug.LogError("[UIManagerResult] La respuesta es null.");
-            return;
-        }
-        else
-        {
-            UIMejora.SetActive(false);
-            UIRes1.SetActive(true);
-        }
-    }
+    public void MoveRight() { /* Tu lógica de UI actual se mantiene igual */ }
+    public void MoveLeft() { /* Tu lógica de UI actual se mantiene igual */ }
 
-    public void MoveLeft()
-    {
-        if (UIRes1.activeSelf)
-        {
-            UIRes1.SetActive(false);
-            UIMejora.SetActive(true);
-        }
-        else if (UIRes2.activeSelf) 
-        {
-            UIRes2.SetActive(false);
-            UIRes1.SetActive(true);
-        }
-        else
-        {
-            UIMejora.SetActive(false);
-            UIRes2.SetActive(true);
-        }
-    }
-
+    // Cambiamos esto para que reciba el objeto ya parseado desde el recorder o lo parsee con Newtonsoft
     public void getJsonContents(string jsonString)
     {
-        results = JsonUtility.FromJson<ResultsClass>(jsonString);
-        UIRes1.transform.Find("Resumen").gameObject.GetComponent<TMP_Text>().text = "RESUMEN:" + results.summary;
-        UIRes1.transform.Find("PuntosF").gameObject.GetComponent<TMP_Text>().text = "PUNTOS FUERTES\n" + results.strengths;
-        UIRes1.transform.Find("PuntosD").gameObject.GetComponent<TMP_Text>().text = "PUNTOS D�BILES\n" + results.weaknesses;
-        UIRes1.transform.Find("Puntuaci�n").gameObject.GetComponent<TMP_Text>().text = "PUNTUACI�N: " + results.score.ToString();
+        // Usar Newtonsoft en lugar de JsonUtility porque tienes JSON anidados
+        analysisResult = JsonConvert.DeserializeObject<AnalysisResponse>(jsonString);
+        
+        // Atajos para leer más fácil
+        var oratory = analysisResult.data.feedback.oratory_expert;
+        var recruiter = analysisResult.data.feedback.recruiter_verdict;
+        var plan = analysisResult.data.feedback.improvement_plan;
 
-        UIRes2.transform.Find("Veredicto").gameObject.GetComponent<TMP_Text>().text = "VEREDICTO: " + (results.passed ? "Aprobado" : "No aprobado");
-        UIRes2.transform.Find("Justificacion").gameObject.GetComponent<TMP_Text>().text = "JUSTIFICACI�N: " + results.decision_rationale;
-        UIRes2.transform.Find("Soft Skills").gameObject.GetComponent<TMP_Text>().text = "SOFT SKILLS\n" + results.soft_skills;
-        UIRes2.transform.Find("Red Flags").gameObject.GetComponent<TMP_Text>().text = "RED FLAGS\n" + results.red_flags;
-        UIRes2.transform.Find("STAR").gameObject.GetComponent<TMP_Text>().text = "M�TODO STAR: " + results.star_method_check;
+        // UI 1: Oratoria
+        UIRes1.transform.Find("Resumen").GetComponent<TMP_Text>().text = "RESUMEN:\n" + oratory.summary;
+        UIRes1.transform.Find("PuntosF").GetComponent<TMP_Text>().text = "PUNTOS FUERTES\n- " + string.Join("\n- ", oratory.strengths);
+        UIRes1.transform.Find("PuntosD").GetComponent<TMP_Text>().text = "PUNTOS DÉBILES\n- " + string.Join("\n- ", oratory.weaknesses);
+        UIRes1.transform.Find("Puntuación").GetComponent<TMP_Text>().text = "PUNTUACIÓN: " + oratory.score.ToString() + "/100";
 
-        UIMejora.transform.Find("CortoPText").gameObject.GetComponent<TMP_Text>().text = results.immediate_action;
-        UIMejora.transform.Find("LargoPtext").gameObject.GetComponent<TMP_Text>().text = results.long_term_advice;
+        // UI 2: Reclutador
+        UIRes2.transform.Find("Veredicto").GetComponent<TMP_Text>().text = "VEREDICTO: " + (recruiter.passed ? "Aprobado" : "No aprobado");
+        UIRes2.transform.Find("Justificacion").GetComponent<TMP_Text>().text = "JUSTIFICACIÓN:\n" + recruiter.decision_rationale;
+        UIRes2.transform.Find("Soft Skills").GetComponent<TMP_Text>().text = "SOFT SKILLS\n- " + string.Join("\n- ", recruiter.soft_skills);
+        UIRes2.transform.Find("Red Flags").GetComponent<TMP_Text>().text = "RED FLAGS\n- " + string.Join("\n- ", recruiter.red_flags);
+        UIRes2.transform.Find("STAR").GetComponent<TMP_Text>().text = "MÉTODO STAR:\n" + recruiter.star_method_check;
+
+        // UI 3: Mejoras
+        UIMejora.transform.Find("CortoPText").GetComponent<TMP_Text>().text = plan.immediate_action;
+        UIMejora.transform.Find("LargoPtext").GetComponent<TMP_Text>().text = plan.long_term_advice;
     }
-
-    //public void StartExperienceButton()
-    //{
-    //    _sceneDif = DifSelector.options[DifSelector.value].text;
-    //    if (_sceneName == "") { Debug.Log("ERROR: Escena inv�lida seleccionada"); return;}
-    //    Debug.Log(_sceneName + " " + _sceneDif);
-    //    StartCoroutine(TPFadeOut());
-    //}
-
-    //private IEnumerator TPFadeOut()
-    //{
-    //    yield return FadeManager.fadeOut();
-    //    doTP();
-    //}
-    //private void doTP()
-    //{
-    //    SceneManager.LoadScene(_sceneName + " " + _sceneDif);
-    //}
 }

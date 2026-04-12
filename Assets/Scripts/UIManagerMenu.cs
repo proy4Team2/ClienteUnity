@@ -1,80 +1,60 @@
 using UnityEngine;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using System.Collections;
 
 public class UIManagerMenu : MonoBehaviour
 {
-    [SerializeField] GameObject UILogin, UIMainMenu, UIDetailsMenu;
-    [SerializeField] TMP_Text DetsTitle, DetsPeople, DetsType, DetsDescript;
-    [SerializeField] Button DetsStart;
-    [SerializeField] TMP_Dropdown DifSelector;
-    [SerializeField] CameraFadeManager FadeManager;
-    private string _sceneName, _sceneDif;
+    [Header("UI Panels")]
+    public GameObject loginPanel;
+    public GameObject registerPanel;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        UILogin.SetActive(true);
-        UIMainMenu.SetActive(false);
-        UIDetailsMenu.SetActive(false);
-        _sceneName = "";
-        _sceneDif = "FACIL";
-    }
+    [Header("Login Fields")]
+    public TMP_InputField loginEmail;
+    public TMP_InputField loginPassword;
+    public Button loginBtn;
 
-    public void LoginToMain()
-    {
-        UILogin.SetActive(false);
-        UIMainMenu.SetActive(true);
-    }
+    [Header("Register Fields")]
+    public TMP_InputField regName;
+    public TMP_InputField regEmail;
+    public TMP_InputField regPassword;
+    public Button regBtn;
 
-    public void DetailsToMain()
+    [Header("Feedback")]
+    public TMP_Text statusText;
+
+    private void Start()
     {
-        UIDetailsMenu.SetActive(false);
-        _sceneName = "";
-        _sceneDif = "FACIL";
-        UIMainMenu.SetActive(true);
+        loginBtn.onClick.AddListener(HandleLogin);
+        regBtn.onClick.AddListener(HandleRegister);
+        ShowLogin();
     }
 
-    public void clickedButtonInterview()
+    public void ShowLogin() { loginPanel.SetActive(true); registerPanel.SetActive(false); }
+    public void ShowRegister() { loginPanel.SetActive(false); registerPanel.SetActive(true); }
+
+    private void HandleLogin()
     {
-        UIDetailsMenu.SetActive(true);
-        DetailsSetup(DetailsData.Instance.Entrevista());
-        UIMainMenu.SetActive(false);
-    }
-    public void clickedButtonReunion()
-    {
-        UIDetailsMenu.SetActive(true);
-        DetailsSetup(DetailsData.Instance.Reunion());
-        UIMainMenu.SetActive(false);
+        statusText.text = "Iniciando sesión...";
+        AuthManager.Instance.AuthenticateUser(loginEmail.text, loginPassword.text, (success, msg) => {
+            if (success) {
+                statusText.text = "¡Bienvenido!";
+                UnityEngine.SceneManagement.SceneManager.LoadScene("VR_Interview_Scene");
+            } else {
+                statusText.text = "Error: " + msg;
+            }
+        });
     }
 
-    public void DetailsSetup(List<string> data)
+    private void HandleRegister()
     {
-        DetsTitle.text = data[0];
-        DetsPeople.text = data[1];
-        DetsType.text = data[2];
-        DetsDescript.text = data[3];
-        _sceneName = data[4];
-    }
-
-    public void StartExperienceButton()
-    {
-        _sceneDif = DifSelector.options[DifSelector.value].text;
-        if (_sceneName == "") { Debug.Log("ERROR: Escena inv�lida seleccionada"); return;}
-        Debug.Log(_sceneName + " " + _sceneDif);
-        StartCoroutine(TPFadeOut());
-    }
-
-    private IEnumerator TPFadeOut()
-    {
-        yield return FadeManager.fadeOut();
-        doTP();
-    }
-    private void doTP()
-    {
-        SceneManager.LoadScene(_sceneName + " " + _sceneDif);
+        statusText.text = "Creando cuenta...";
+        AuthManager.Instance.RegisterUser(regEmail.text, regPassword.text, regName.text, (success, msg) => {
+            if (success) {
+                statusText.text = "Cuenta creada con éxito.";
+                UnityEngine.SceneManagement.SceneManager.LoadScene("VR_Interview_Scene");
+            } else {
+                statusText.text = "Error: " + msg;
+            }
+        });
     }
 }

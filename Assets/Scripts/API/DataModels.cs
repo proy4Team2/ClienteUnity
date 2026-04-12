@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
+// ==================================================================
+// MODELOS DE ANÁLISIS DE ENTREVISTA
+// ==================================================================
+
 // ── Respuesta raíz ────────────────────────────────────────────────
 [Serializable]
 public class AnalysisResponse
@@ -16,11 +20,9 @@ public class AnalysisResponse
 public class AnalysisData
 {
     [JsonProperty("transcript")] public string          transcript;
-    [JsonProperty("metrics")]    public TechnicalMetrics metrics; // <--- Added!
+    [JsonProperty("metrics")]    public TechnicalMetrics metrics; 
     [JsonProperty("feedback")]   public ServerFeedback  feedback;
 
-    // AppController usa response.data.quality — lo construimos
-    // desde las métricas que devuelve el servidor dentro del feedback
     public QualityMetrics quality => new QualityMetrics
     {
         speakingRateWPM  = metrics?.wpm ?? 0,
@@ -41,15 +43,13 @@ public class TechnicalMetrics
     [JsonProperty("average_confidence")] public float average_confidence;
 }
 
-// ── Estructura real del servidor ──────────────────────────────────
+// ── Estructura del servidor ──────────────────────────────────
 [Serializable]
 public class ServerFeedback
 {
     [JsonProperty("oratory_expert")]    public OratoryExpert    oratory_expert;
     [JsonProperty("recruiter_verdict")] public RecruiterVerdict recruiter_verdict;
     [JsonProperty("improvement_plan")]  public ImprovementPlan  improvement_plan;
-
-    // ── Alias que usa AppController.DisplayResults() ──────────────
 
     public List<FeedbackItem> positivePoints
     {
@@ -104,7 +104,6 @@ public class ImprovementPlan
     [JsonProperty("long_term_advice")] public string long_term_advice;
 }
 
-// ── Modelos que ya usaba AppController (se mantienen igual) ───────
 [Serializable]
 public class QualityMetrics
 {
@@ -121,4 +120,60 @@ public class FeedbackItem
     public string area;
     public string message;
     public string suggestion;
+}
+
+
+// ==================================================================
+// MODELS (AUTENTICACIÓN, PERFIL Y SESIONES GENERALES)
+// ==================================================================
+
+[Serializable]
+public class AuthServerResponse 
+{
+    [JsonProperty("success")] public bool success;
+    [JsonProperty("uid")]     public string uid;
+    [JsonProperty("email")]   public string email;
+    [JsonProperty("name")]    public string name;
+    [JsonProperty("token")]   public string token;
+    [JsonProperty("stats")]   public DashboardStats stats; 
+}
+
+[Serializable]
+public class DashboardStats
+{
+    [JsonProperty("totalSessions")]  public int totalSessions;
+    [JsonProperty("averageScore")]   public float averageScore;
+    [JsonProperty("sessionsPassed")] public int sessionsPassed;
+    [JsonProperty("averageWpm")]     public float averageWpm;
+    [JsonProperty("lastSessionDate")]public string lastSessionDate;
+}
+
+[Serializable]
+public class UserProfileResponse
+{
+    [JsonProperty("success")] public bool success;
+    [JsonProperty("data")]    public UserProfileData data;
+}
+
+[Serializable]
+public class UserProfileData
+{
+    [JsonProperty("uid")]   public string uid;
+    [JsonProperty("email")] public string email;
+    [JsonProperty("name")]  public string name;
+    [JsonProperty("dashboardStats")] public DashboardStats dashboardStats;
+}
+
+[Serializable]
+public class SessionListResponse
+{
+    [JsonProperty("success")] public bool success;
+    [JsonProperty("data")]    public List<AnalysisData> data; 
+}
+
+[Serializable]
+public class GenericServerResponse
+{
+    [JsonProperty("success")] public bool success;
+    [JsonProperty("message")] public string message;
 }

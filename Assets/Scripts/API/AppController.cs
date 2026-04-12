@@ -5,16 +5,26 @@ using System.IO;
 
 public class AppController : MonoBehaviour
 {
+    // Singleton para que ConversationAudioRecorder pueda encontrarlo
+    public static AppController Instance { get; private set; }
+
     [Header("UI References")]
     public TMP_Text statusText;
     public TMP_Text feedbackText;
     public Button loginButton;
     public Button sendButton;
 
-    [Header("Test Configuration")]
-    public string testEmail = "alvaro.vazquez.1716@gmail.com";
-    public string testPassword = "password123";
+    public TMP_InputField emailInput;
+    public TMP_InputField passwordInput;
+
     public string testAudioFile = "sampleES.m4a"; 
+
+    // Inicializamos el Singleton
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
     private void Start()
     {
@@ -27,35 +37,46 @@ public class AppController : MonoBehaviour
         feedbackText.text = "";
         sendButton.interactable = false;
         
-        // Add listeners
         loginButton.onClick.AddListener(OnLoginClicked);
         sendButton.onClick.AddListener(OnSendAudioClicked);
     }
 
     private void OnLoginClicked()
     {
-        UpdateStatus("Authenticating...", Color.yellow);
+        // 1. Validamos que no estén vacíos
+        if (string.IsNullOrEmpty(emailInput.text) || string.IsNullOrEmpty(passwordInput.text))
+        {
+            UpdateStatus("Por favor, rellena todos los campos", Color.red);
+            return;
+        }
+
+        UpdateStatus("Autenticando...", Color.yellow);
         loginButton.interactable = false;
 
-        AuthManager.Instance.AuthenticateUser(testEmail, testPassword, (success, message) =>
+        // 2. Usamos el texto que el usuario escribió en la UI
+        string email = emailInput.text;
+        string password = passwordInput.text;
+
+        AuthManager.Instance.AuthenticateUser(email, password, (success, message) =>
         {
-            // Switch back to main thread
             UnityMainThreadDispatcher.Instance().Enqueue(() =>
             {
                 if (success)
                 {
-                    UpdateStatus("Login Successful!", Color.green);
+                    UpdateStatus($"Bienvenido: {AuthManager.Instance.CurrentUserName}", Color.green);
                     sendButton.interactable = true;
+                    // Opcional: Ocultar el panel de login aquí
                 }
                 else
                 {
-                    UpdateStatus($"Login Failed: {message}", Color.red);
+                    UpdateStatus($"Error: {message}", Color.red);
                     loginButton.interactable = true;
                 }
             });
         });
     }
 
+    // Enviar archivo de audio local
     private void OnSendAudioClicked()
     {
         UpdateStatus("Reading audio file...", Color.yellow);
@@ -71,16 +92,27 @@ public class AppController : MonoBehaviour
         StartCoroutine(ApiClient.Instance.UploadAudioSession(audioData, token, "es", 
             (response) => 
             {
-                DisplayResults(response);
-                UpdateStatus("Analysis Complete", Color.green);
-                sendButton.interactable = true;
+                ProcessServerResponse(response);
             }, 
             (error) => 
             {
-                UpdateStatus($"Upload Failed: {error}", Color.red);
-                sendButton.interactable = true;
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    UpdateStatus($"Upload Failed: {error}", Color.red);
+                    sendButton.interactable = true;
+                });
             }
         ));
+    }
+
+    // Método público que llama ConversationAudioRecorder (VR Mode)
+    public void ProcessServerResponse(AnalysisResponse response)
+    {
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            DisplayResults(response);
+            UpdateStatus("Analysis Complete", Color.green);
+            sendButton.interactable = true;
+        });
     }
 
     private byte[] LoadAudioFile()

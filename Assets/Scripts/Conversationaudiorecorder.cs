@@ -4,57 +4,36 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Convai.Scripts.Runtime.Core;
+using Newtonsoft.Json;
 
-public class Conversationaudiorecorder : MonoBehaviour
+public class ConversationAudioRecorder : MonoBehaviour
 {
     [Header("Configuración")]
     [Tooltip("Frecuencia de muestreo del WAV final (Hz). 44100 es estándar.")]
     public int sampleRate = 44100;
 
     [Tooltip("Duración máxima de la grabación en segundos.")]
-    public int maxDurationSec = 3600; // 1 hora
+    public int maxDurationSec = 600; // 1 hora
 
+    [Header("Automatización y Servidor")]
+    public bool autoUploadOnStop = true;
+    public string language = "es";
+
+    // ── Variables de Buffer y Sincronización ──
     private float[] _playerBuffer;
     private float[] _npcBuffer;
     private int _playerWriteIndex = 0;
     private int _npcWriteIndex = 0;
     private System.Diagnostics.Stopwatch _recordingStopwatch = new System.Diagnostics.Stopwatch();
+    
     private bool _isRecording = false;
-    private string _exportPath;
     private readonly object _lock = new object();
-
-    /// <summary>Expuesto para que NpcAudioCapture pueda consultarlo.</summary>
+    
     public bool IsRecording => _isRecording;
 
-    [Header("Automatización")]
-    [Tooltip("¿Subir automáticamente al servidor al detener la grabación?")]
-    public bool autoUploadOnStop = true;
-
-    [Header("Configuración de Servidor")]
-    [Tooltip("Idioma de la conversación para el análisis.")]
-    public string language = "es";
-
     // ── Lifecycle ─────────────────────────────────────────────────────
-
-    private void Start()
-    {
-        StartRecording();
-    }
-
-    private void Update()
-    {
-        // ATAJO DE TECLADO: Pulsa 'U' para subir manualmente
-        if (Input.GetKeyDown(KeyCode.U))
-        {
-            Debug.Log("[ConversationRecorder] Tecla 'U' detectada. Forzando subida...");
-            StopAndUploadInternal();
-        }
-    }
-
     private void OnEnable()
     {
-        // Solo el audio del jugador se suscribe aquí.
-        // El audio del NPC se captura a través de NpcAudioCapture + OnAudioFilterRead.
         ConvaiGRPCAPI.OnPlayerAudioCaptured += HandlePlayerAudio;
     }
 
@@ -63,22 +42,87 @@ public class Conversationaudiorecorder : MonoBehaviour
         ConvaiGRPCAPI.OnPlayerAudioCaptured -= HandlePlayerAudio;
     }
 
-    // ── Grabación ─────────────────────────────────────────────────────
+    private void Update()
+    {
+        // ATAJO DE TECLADO: Pulsa 'U' para detener y subir manualmente
+        if (Input.GetKeyDown(KeyCode.U))
+        {
+            Debug.Log("[ConversationRecorder] Tecla 'U' detectada. Forzando subida...");
+            StopAndUpload();
+        }
+    }
 
+    private void OnDestroy()
+    {
+        // Si se destruye el objeto mientras graba, salvamos y subimos automáticamente
+        if (_isRecording && autoUploadOnStop)
+        {
+            StopAndUpload();
+        }
+    }
+
+    // ── Control de Grabación ──────────────────────────────────────────
     public void StartRecording()
     {
         if (_isRecording) return;
-
-        Debug.Log("[ConversationRecorder] ▶ Iniciando grabación de conversación...");
+        
+        Debug.Log("[ConversationRecorder] ▶ Iniciando grabación en estéreo (Jugador + NPC)...");
         _playerBuffer = new float[sampleRate * maxDurationSec];
         _npcBuffer = new float[sampleRate * maxDurationSec];
+        
         _playerWriteIndex = 0;
         _npcWriteIndex = 0;
+        
         _recordingStopwatch.Restart();
         _isRecording = true;
     }
 
-    // ── Callbacks de audio ────────────────────────────────────────────
+    public void StopAndUpload()
+    {
+        if (!_isRecording) return;
+        _isRecording = false;
+        _recordingStopwatch.Stop();
+
+        // 1. Procesar los buffers y crear el WAV Estéreo
+        byte[] wavData = CreateStereoWav();
+        
+        if (wavData == null) return;
+
+        // 2. Obtener Token del AuthManager
+        string token = AuthManager.Instance.CurrentIdToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            Debug.LogError("[ConversationRecorder] ❌ No hay token de sesión. Debes estar logueado.");
+            return;
+        }
+
+        Debug.Log($"[ConversationRecorder] 📤 Subiendo audio al servidor... ({wavData.Length} bytes)");
+
+        // 3. Subir al servidor usando la corrutina del ApiClient (para que no se corte al cambiar de escena)
+        ApiClient.Instance.StartCoroutine(ApiClient.Instance.UploadAudioSession(
+            wavData, 
+            token, 
+            language,
+            (response) =>
+            {
+                Debug.Log($"[ConversationRecorder] ✅ Análisis completado. ID Sesión: {response.sessionId}");
+                
+                // Si AppController existe en la escena, le pasamos los datos
+                if (AppController.Instance != null) 
+                {
+                    AppController.Instance.ProcessServerResponse(response);
+                } 
+                else 
+                {
+                    // Si no existe, al menos imprimimos el resultado en la consola como hacías antes
+                    Debug.Log("[ConversationRecorder] Resultados obtenidos:\n" + JsonConvert.SerializeObject(response, Formatting.Indented));
+                }
+            },
+            (error) => Debug.LogError($"[ConversationRecorder] ❌ Error en la subida: {error}")
+        ));
+    }
+
+    // ── Callbacks de Audio ────────────────────────────────────────────
 
     private void HandlePlayerAudio(float[] samples, int rate)
     {
@@ -86,17 +130,14 @@ public class Conversationaudiorecorder : MonoBehaviour
         WriteToBuffer(Resample(samples, rate, sampleRate), true);
     }
 
-    /// <summary>
-    /// Llamado por NpcAudioCapture desde el hilo de audio de Unity.
-    /// Thread-safe: solo escribe en el buffer de floats (operación atómica por índice).
-    /// </summary>
+    /// <summary>Llamado por NpcAudioCapture desde el hilo de audio de Unity.</summary>
     public void WriteNpcSamples(float[] samples, int rate)
     {
         if (!_isRecording || samples == null || samples.Length == 0) return;
         WriteToBuffer(Resample(samples, rate, sampleRate), false);
     }
 
-    // ── Buffer ────────────────────────────────────────────────────────
+    // ── Lógica Core: Buffers Sincronizados ─────────────────────────────
 
     private void WriteToBuffer(float[] samples, bool isPlayer)
     {
@@ -134,48 +175,10 @@ public class Conversationaudiorecorder : MonoBehaviour
         }
     }
 
-    // ── Stop & Upload ─────────────────────────────────────────────────
+    // ── Lógica Core: Entrelazado y WAV ─────────────────────────────────
 
-    public void StopAndUploadButton() => StopAndUploadInternal();
-
-    private void StopAndUploadInternal()
+    private byte[] CreateStereoWav()
     {
-        string path = StopAndSave();
-        if (string.IsNullOrEmpty(path)) return;
-
-        byte[] wavData = File.ReadAllBytes(path);
-        string token = AuthManager.Instance.CurrentIdToken;
-
-        if (string.IsNullOrEmpty(token))
-        {
-            Debug.LogError("[ConversationRecorder] ❌ No hay token de sesión. Debes estar logueado.");
-            return;
-        }
-
-        Debug.Log("[ConversationRecorder] 📤 Subiendo audio al servidor...");
-        ApiClient.Instance.StartCoroutine(ApiClient.Instance.UploadAudioSession(
-            wavData,
-            token,
-            language,
-            (response) =>
-            {
-                Debug.Log("[ConversationRecorder] ✅ Subida completada. ID Sesión: " + response.sessionId);
-                Debug.Log("[ConversationRecorder] Resultados obtenidos:\n" + Newtonsoft.Json.JsonConvert.SerializeObject(response, Newtonsoft.Json.Formatting.Indented));
-            },
-            (error) => Debug.LogError("[ConversationRecorder] ❌ Error en la subida: " + error)
-        ));
-    }
-
-    public string StopAndSave()
-    {
-        if (!_isRecording)
-        {
-            Debug.LogWarning("[ConversationRecorder] ⚠️ StopAndSave llamado pero no se estaba grabando.");
-            return null;
-        }
-        _isRecording = false;
-        _recordingStopwatch.Stop();
-
         int maxIndex = Mathf.Max(_playerWriteIndex, _npcWriteIndex);
         if (maxIndex <= 0)
         {
@@ -187,38 +190,12 @@ public class Conversationaudiorecorder : MonoBehaviour
         float[] interleaved = new float[(maxIndex + 1) * 2];
         for (int i = 0; i <= maxIndex; i++)
         {
-            interleaved[i * 2] = _playerBuffer[i];
-            interleaved[i * 2 + 1] = _npcBuffer[i];
+            interleaved[i * 2] = _playerBuffer[i];       // Canal 0
+            interleaved[i * 2 + 1] = _npcBuffer[i];      // Canal 1
         }
 
-        byte[] wavData = EncodeWav(interleaved, sampleRate, 2);
-        string fileName = $"Convai_Conversation_{DateTime.Now:yyyyMMdd_HHmmss}.wav";
-        _exportPath = Path.Combine(Application.persistentDataPath, fileName);
-
-        try
-        {
-            File.WriteAllBytes(_exportPath, wavData);
-            Debug.Log($"[ConversationRecorder] ✅ WAV estéreo guardado: {_exportPath} ({wavData.Length} bytes, {(maxIndex + 1) / (float)sampleRate:F1}s)");
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[ConversationRecorder] Error al guardar WAV: {e.Message}");
-            return null;
-        }
-
-        return _exportPath;
+        return EncodeWav(interleaved, sampleRate, 2);
     }
-
-    private void OnDestroy()
-    {
-        if (_isRecording)
-        {
-            if (autoUploadOnStop) StopAndUploadInternal();
-            else StopAndSave();
-        }
-    }
-
-    // ── DSP ───────────────────────────────────────────────────────────
 
     private float[] Resample(float[] input, int fromRate, int toRate)
     {
@@ -262,10 +239,9 @@ public class Conversationaudiorecorder : MonoBehaviour
 
             writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
             writer.Write(dataSize);
-
             for (int i = 0; i < samples.Length; i++)
                 writer.Write((short)(Mathf.Clamp(samples[i], -1f, 1f) * short.MaxValue));
-
+            
             writer.Flush();
             return stream.ToArray();
         }
