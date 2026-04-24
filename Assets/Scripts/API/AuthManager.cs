@@ -7,7 +7,7 @@ public class AuthManager : MonoBehaviour
 
     public string CurrentIdToken { get; private set; }
     public string CurrentUserName { get; private set; }
-    public bool   IsLoggedIn     => !string.IsNullOrEmpty(CurrentIdToken);
+    public bool IsLoggedIn => !string.IsNullOrEmpty(CurrentIdToken);
 
     private void Awake()
     {
@@ -19,19 +19,22 @@ public class AuthManager : MonoBehaviour
     // ── LOGIN ──
     public void AuthenticateUser(string email, string password, Action<bool, string> callback)
     {
-        StartCoroutine(ApiClient.Instance.LoginUser(email, password, 
-            onSuccess: (response) => 
+        StartCoroutine(ApiClient.Instance.LoginUser(email, password,
+            onSuccess: (response) =>
             {
-                if(response.success) {
+                if (response.success)
+                {
                     CurrentIdToken = response.token;
                     CurrentUserName = response.name;
                     Debug.Log($"[AuthManager] ✅ Login OK — Bienvenido: {response.name}");
                     callback?.Invoke(true, response.token);
-                } else {
+                }
+                else
+                {
                     callback?.Invoke(false, "Login fallido.");
                 }
-            }, 
-            onError: (errorMsg) => 
+            },
+            onError: (errorMsg) =>
             {
                 Debug.LogError($"[AuthManager] ❌ {errorMsg}");
                 callback?.Invoke(false, errorMsg);
@@ -42,19 +45,22 @@ public class AuthManager : MonoBehaviour
     // ── REGISTRO ──
     public void RegisterUser(string email, string password, string name, Action<bool, string> callback)
     {
-        StartCoroutine(ApiClient.Instance.RegisterUser(email, password, name, 
-            onSuccess: (response) => 
+        StartCoroutine(ApiClient.Instance.RegisterUser(email, password, name,
+            onSuccess: (response) =>
             {
-                if(response.success) {
+                if (response.success)
+                {
                     CurrentIdToken = response.token; // Tu API ya devuelve el token al registrar
                     CurrentUserName = response.name;
                     Debug.Log($"[AuthManager] ✅ Registro OK — Bienvenido: {response.name}");
                     callback?.Invoke(true, response.token);
-                } else {
+                }
+                else
+                {
                     callback?.Invoke(false, "Registro fallido.");
                 }
-            }, 
-            onError: (errorMsg) => 
+            },
+            onError: (errorMsg) =>
             {
                 Debug.LogError($"[AuthManager] ❌ {errorMsg}");
                 callback?.Invoke(false, errorMsg);

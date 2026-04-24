@@ -1,13 +1,12 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class UIManagerMenu : MonoBehaviour
 {
-    [Header("UI Panels")]
-    public GameObject loginPanel;
-    public GameObject registerPanel;
-
     [Header("Login Fields")]
     public TMP_InputField loginEmail;
     public TMP_InputField loginPassword;
@@ -20,41 +19,117 @@ public class UIManagerMenu : MonoBehaviour
     public Button regBtn;
 
     [Header("Feedback")]
-    public TMP_Text statusText;
+    public TMP_Text statusTextLogin;
+    public TMP_Text statusTextRegister;
+
+    [Header("CAMPOS DE UI QUE EXISTEN POR UN MOTIVO **NO BORRAR**")]
+    public GameObject UILogin;
+    public GameObject UIRegister;
+    public GameObject UIMainMenu;
+    public GameObject UIDetailsMenu;
+    public TMP_Text DetsTitle, DetsPeople, DetsType, DetsDescript;
+    public Button DetsStart;
+    public TMP_Dropdown DifSelector;
+    public CameraFadeManager FadeManager;
+    private string _sceneName, _sceneDif;
 
     private void Start()
     {
         loginBtn.onClick.AddListener(HandleLogin);
         regBtn.onClick.AddListener(HandleRegister);
-        ShowLogin();
+        UILogin.SetActive(true);
+        UIRegister.SetActive(false);
+        UIMainMenu.SetActive(false);
+        UIDetailsMenu.SetActive(false);
+        _sceneName = "";
+        _sceneDif = "FACIL";
     }
 
-    public void ShowLogin() { loginPanel.SetActive(true); registerPanel.SetActive(false); }
-    public void ShowRegister() { loginPanel.SetActive(false); registerPanel.SetActive(true); }
-
-    private void HandleLogin()
+    public void HandleLogin()
     {
-        statusText.text = "Iniciando sesión...";
+        statusTextLogin.text = "Iniciando sesión...";
         AuthManager.Instance.AuthenticateUser(loginEmail.text, loginPassword.text, (success, msg) => {
             if (success) {
-                statusText.text = "¡Bienvenido!";
-                UnityEngine.SceneManagement.SceneManager.LoadScene("VR_Interview_Scene");
+                statusTextLogin.text = "¡Bienvenido!";
+                UILogin.SetActive(false);
+                UIMainMenu.SetActive(true);
             } else {
-                statusText.text = "Error: " + msg;
+                statusTextLogin.text = "Error: " + msg;
             }
         });
     }
 
-    private void HandleRegister()
+    public void HandleRegister()
     {
-        statusText.text = "Creando cuenta...";
+        statusTextRegister.text = "Creando cuenta...";
         AuthManager.Instance.RegisterUser(regEmail.text, regPassword.text, regName.text, (success, msg) => {
             if (success) {
-                statusText.text = "Cuenta creada con éxito.";
-                UnityEngine.SceneManagement.SceneManager.LoadScene("VR_Interview_Scene");
+                statusTextRegister.text = "Cuenta creada con éxito.";
+                UIRegister.SetActive(false);
+                UIMainMenu.SetActive(true);
             } else {
-                statusText.text = "Error: " + msg;
+                statusTextRegister.text = "Error: " + msg;
             }
         });
+    }
+
+    public void DetailsToMain()
+    {
+        UIDetailsMenu.SetActive(false);
+        _sceneName = "";
+        _sceneDif = "FACIL";
+        UIMainMenu.SetActive(true);
+    }
+
+    public void LoginToRegister()
+    {
+        UILogin.SetActive(false);
+        UIRegister.SetActive(true);
+    }
+
+    public void RegisterToLogin()
+    {
+        UIRegister.SetActive(false);
+        UILogin.SetActive(true);
+    }
+
+    public void clickedButtonInterview()
+    {
+        UIDetailsMenu.SetActive(true);
+        DetailsSetup(DetailsData.Instance.Entrevista());
+        UIMainMenu.SetActive(false);
+    }
+    public void clickedButtonReunion()
+    {
+        UIDetailsMenu.SetActive(true);
+        DetailsSetup(DetailsData.Instance.Reunion());
+        UIMainMenu.SetActive(false);
+    }
+
+    public void DetailsSetup(List<string> data)
+    {
+        DetsTitle.text = data[0];
+        DetsPeople.text = data[1];
+        DetsType.text = data[2];
+        DetsDescript.text = data[3];
+        _sceneName = data[4];
+    }
+
+    public void StartExperienceButton()
+    {
+        _sceneDif = DifSelector.options[DifSelector.value].text;
+        if (_sceneName == "") { Debug.Log("ERROR: Escena invalida seleccionada"); return; }
+        Debug.Log(_sceneName + " " + _sceneDif);
+        StartCoroutine(TPFadeOut());
+    }
+
+    private IEnumerator TPFadeOut()
+    {
+        yield return FadeManager.fadeOut();
+        doTP();
+    }
+    private void doTP()
+    {
+        SceneManager.LoadScene(_sceneName + " " + _sceneDif);
     }
 }

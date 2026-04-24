@@ -10,7 +10,7 @@ using UnityEngine;
 public class AutoLogin : MonoBehaviour
 {
     [Header("Credenciales de prueba")]
-    public string email    = "alvaro.vazquez.1716@gmail.com";
+    public string email = "alvaro.vazquez.1716@gmail.com";
     public string password = "password123";
 
     private void Start()
