@@ -10,21 +10,32 @@ using UnityEngine;
 public class AutoLogin : MonoBehaviour
 {
     [Header("Credenciales de prueba")]
-    public string email = "alvaro.vazquez.1716@gmail.com";
-    public string password = "password123";
+    public string email;
+    public string password;
 
     private void Start()
     {
-        Debug.Log("[AutoLogin] Iniciando sesión automática...");
+        // Si ya estamos logueados (porque venimos del menú), no hace falta re-loguear
+        if (AuthManager.Instance.IsLoggedIn)
+        {
+            Debug.Log("[AutoLogin] Usuario ya autenticado. Saltando login automático.");
+            return;
+        }
 
-        AuthManager.Instance.AuthenticateUser(email, password, (success, message) =>
+        // Intentar cargar credenciales guardadas en el menú
+        string savedEmail = PlayerPrefs.GetString("SavedEmail", email);
+        string savedPassword = PlayerPrefs.GetString("SavedPassword", password);
+
+        Debug.Log($"[AutoLogin] Iniciando sesión automática para: {savedEmail}...");
+
+        AuthManager.Instance.AuthenticateUser(savedEmail, savedPassword, (success, message) =>
         {
             UnityMainThreadDispatcher.Instance().Enqueue(() =>
             {
                 if (success)
-                    Debug.Log("[AutoLogin] ✅ Login OK — token listo para el upload");
+                    Debug.Log("[AutoLogin] Login OK — token listo para el upload");
                 else
-                    Debug.LogError($"[AutoLogin] ❌ Login fallido: {message}");
+                    Debug.LogError($"[AutoLogin] Login fallido: {message}");
             });
         });
     }

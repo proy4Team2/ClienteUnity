@@ -42,6 +42,12 @@ public class ConversationAudioRecorder : MonoBehaviour
         ConvaiGRPCAPI.OnPlayerAudioCaptured -= HandlePlayerAudio;
     }
 
+    private void Start()
+    {
+        // Iniciamos la grabación automáticamente al entrar en la escena de entrevista
+        StartRecording();
+    }
+
     private void Update()
     {
         // ATAJO DE TECLADO: Pulsa 'U' para detener y subir manualmente
@@ -66,7 +72,7 @@ public class ConversationAudioRecorder : MonoBehaviour
     {
         if (_isRecording) return;
         
-        Debug.Log("[ConversationRecorder] ▶ Iniciando grabación en estéreo (Jugador + NPC)...");
+        Debug.Log("[ConversationRecorder] Iniciando grabación en estéreo (Jugador + NPC)...");
         _playerBuffer = new float[sampleRate * maxDurationSec];
         _npcBuffer = new float[sampleRate * maxDurationSec];
         
@@ -79,7 +85,13 @@ public class ConversationAudioRecorder : MonoBehaviour
 
     public void StopAndUpload()
     {
-        if (!_isRecording) return;
+        if (!_isRecording) 
+        {
+            Debug.LogWarning("[ConversationRecorder] Se intentó subir pero no se está grabando.");
+            return;
+        }
+        
+        Debug.Log("[ConversationRecorder] Deteniendo grabación y preparando subida...");
         _isRecording = false;
         _recordingStopwatch.Stop();
 
@@ -92,11 +104,11 @@ public class ConversationAudioRecorder : MonoBehaviour
         string token = AuthManager.Instance.CurrentIdToken;
         if (string.IsNullOrEmpty(token))
         {
-            Debug.LogError("[ConversationRecorder] ❌ No hay token de sesión. Debes estar logueado.");
+            Debug.LogError("[ConversationRecorder] No hay token de sesión. Debes estar logueado.");
             return;
         }
 
-        Debug.Log($"[ConversationRecorder] 📤 Subiendo audio al servidor... ({wavData.Length} bytes)");
+        Debug.Log($"[ConversationRecorder] Subiendo audio al servidor... ({wavData.Length} bytes)");
 
         // 3. Subir al servidor usando la corrutina del ApiClient (para que no se corte al cambiar de escena)
         ApiClient.Instance.StartCoroutine(ApiClient.Instance.UploadAudioSession(
@@ -105,7 +117,7 @@ public class ConversationAudioRecorder : MonoBehaviour
             language,
             (response) =>
             {
-                Debug.Log($"[ConversationRecorder] ✅ Análisis completado. ID Sesión: {response.sessionId}");
+                Debug.Log($"[ConversationRecorder] Análisis completado. ID Sesión: {response.sessionId}");
                 
                 // Si AppController existe en la escena, le pasamos los datos
                 if (AppController.Instance != null) 
@@ -118,7 +130,7 @@ public class ConversationAudioRecorder : MonoBehaviour
                     Debug.Log("[ConversationRecorder] Resultados obtenidos:\n" + JsonConvert.SerializeObject(response, Formatting.Indented));
                 }
             },
-            (error) => Debug.LogError($"[ConversationRecorder] ❌ Error en la subida: {error}")
+            (error) => Debug.LogError($"[ConversationRecorder] Error en la subida: {error}")
         ));
     }
 
@@ -182,7 +194,7 @@ public class ConversationAudioRecorder : MonoBehaviour
         int maxIndex = Mathf.Max(_playerWriteIndex, _npcWriteIndex);
         if (maxIndex <= 0)
         {
-            Debug.LogError("[ConversationRecorder] ❌ No se capturó NADA de audio.");
+            Debug.LogError("[ConversationRecorder] No se capturó nada de audio.");
             return null;
         }
 

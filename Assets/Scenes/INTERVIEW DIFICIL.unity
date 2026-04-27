@@ -473,8 +473,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6020e38483d6744e98f42be1d8cc771, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  email: sofiaolondo@gmail.com
-  password: 12345678
+  email: 
+  password: 
 --- !u!114 &224710083
 MonoBehaviour:
   m_ObjectHideFlags: 0

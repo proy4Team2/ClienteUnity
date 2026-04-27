@@ -26,7 +26,7 @@ public class AuthManager : MonoBehaviour
                 {
                     CurrentIdToken = response.token;
                     CurrentUserName = response.name;
-                    Debug.Log($"[AuthManager] ✅ Login OK — Bienvenido: {response.name}");
+                    Debug.Log($"[AuthManager] Login OK — Bienvenido: {response.name}");
                     callback?.Invoke(true, response.token);
                 }
                 else
@@ -36,7 +36,7 @@ public class AuthManager : MonoBehaviour
             },
             onError: (errorMsg) =>
             {
-                Debug.LogError($"[AuthManager] ❌ {errorMsg}");
+                Debug.LogError($"[AuthManager] {errorMsg}");
                 callback?.Invoke(false, errorMsg);
             }
         ));
@@ -50,9 +50,9 @@ public class AuthManager : MonoBehaviour
             {
                 if (response.success)
                 {
-                    CurrentIdToken = response.token; // Tu API ya devuelve el token al registrar
+                    CurrentIdToken = response.token;
                     CurrentUserName = response.name;
-                    Debug.Log($"[AuthManager] ✅ Registro OK — Bienvenido: {response.name}");
+                    Debug.Log($"[AuthManager] Registro OK — Bienvenido: {response.name}");
                     callback?.Invoke(true, response.token);
                 }
                 else
@@ -62,7 +62,7 @@ public class AuthManager : MonoBehaviour
             },
             onError: (errorMsg) =>
             {
-                Debug.LogError($"[AuthManager] ❌ {errorMsg}");
+                Debug.LogError($"[AuthManager] {errorMsg}");
                 callback?.Invoke(false, errorMsg);
             }
         ));

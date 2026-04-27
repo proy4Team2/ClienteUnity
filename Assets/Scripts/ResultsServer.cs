@@ -99,7 +99,7 @@ public class ResultsServer : MonoBehaviour
             bool passed = rv.passed;
             if (recruiterPassedText != null)
             {
-                recruiterPassedText.text  = passed ? "✅ APTO" : "❌ NO APTO";
+                recruiterPassedText.text  = passed ? "APTO" : "NO APTO";
                 recruiterPassedText.color = passed ? Color.green : Color.red;
             }
             SetText(recruiterRationaleText,  rv.decision_rationale);

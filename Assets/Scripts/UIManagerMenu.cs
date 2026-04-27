@@ -48,8 +48,16 @@ public class UIManagerMenu : MonoBehaviour
     public void HandleLogin()
     {
         statusTextLogin.text = "Iniciando sesión...";
-        AuthManager.Instance.AuthenticateUser(loginEmail.text, loginPassword.text, (success, msg) => {
+        string email = loginEmail.text;
+        string password = loginPassword.text;
+
+        AuthManager.Instance.AuthenticateUser(email, password, (success, msg) => {
             if (success) {
+                // Guardar para el autologin de la siguiente escena
+                PlayerPrefs.SetString("SavedEmail", email);
+                PlayerPrefs.SetString("SavedPassword", password);
+                PlayerPrefs.Save();
+
                 statusTextLogin.text = "¡Bienvenido!";
                 UILogin.SetActive(false);
                 UIMainMenu.SetActive(true);
@@ -62,8 +70,17 @@ public class UIManagerMenu : MonoBehaviour
     public void HandleRegister()
     {
         statusTextRegister.text = "Creando cuenta...";
-        AuthManager.Instance.RegisterUser(regEmail.text, regPassword.text, regName.text, (success, msg) => {
+        string email = regEmail.text;
+        string password = regPassword.text;
+        string name = regName.text;
+
+        AuthManager.Instance.RegisterUser(email, password, name, (success, msg) => {
             if (success) {
+                // Guardar para el autologin de la siguiente escena
+                PlayerPrefs.SetString("SavedEmail", email);
+                PlayerPrefs.SetString("SavedPassword", password);
+                PlayerPrefs.Save();
+
                 statusTextRegister.text = "Cuenta creada con éxito.";
                 UIRegister.SetActive(false);
                 UIMainMenu.SetActive(true);
