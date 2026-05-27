@@ -143,10 +143,6 @@ public class UIManagerMenu : MonoBehaviour
     private IEnumerator TPFadeOut()
     {
         yield return FadeManager.fadeOut();
-        doTP();
-    }
-    private void doTP()
-    {
         SceneManager.LoadScene(_sceneName + " " + _sceneDif);
     }
 }

@@ -2,11 +2,14 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.IO;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class AppController : MonoBehaviour
 {
     // Singleton para que ConversationAudioRecorder pueda encontrarlo
     public static AppController Instance { get; private set; }
+    [SerializeField] public CameraFadeManager FadeManager;
 
     [Header("UI References")]
     public TMP_Text statusText;
@@ -17,7 +20,9 @@ public class AppController : MonoBehaviour
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
 
-    public string testAudioFile = "sampleES.m4a"; 
+    public string testAudioFile = "sampleES.m4a";
+
+    public AnalysisResponse resp;
 
     // Inicializamos el Singleton
     private void Awake()
@@ -29,6 +34,7 @@ public class AppController : MonoBehaviour
     private void Start()
     {
         InitializeUI();
+        resp = null;
     }
 
     private void InitializeUI()
@@ -109,10 +115,21 @@ public class AppController : MonoBehaviour
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
-            DisplayResults(response);
-            UpdateStatus("Analysis Complete", Color.green);
-            sendButton.interactable = true;
+            //DisplayResults(response);
+            //UpdateStatus("Analysis Complete", Color.green);
+            //sendButton.interactable = true;
+
+            //Guardar respuesta en instancia persistente
+            resp = response;
+
+            //Cambiar de escena una vez hecho esto
+            StartCoroutine(TPFadeOut());
         });
+    }
+    private IEnumerator TPFadeOut()
+    {
+        yield return FadeManager.fadeOut();
+        SceneManager.LoadScene("ResultsScene");
     }
 
     private byte[] LoadAudioFile()
