@@ -18,8 +18,6 @@ public class UIManagerResult : MonoBehaviour
     [SerializeField] Button sideButtonL, sideButtonR;
     [SerializeField] CameraFadeManager FadeManager;
 
-    private int _currentScreen;
-
     // Cambiamos ResultsClass por el AnalysisResponse de DataModels.cs
     private AnalysisResponse analysisResult; 
 
@@ -31,21 +29,19 @@ public class UIManagerResult : MonoBehaviour
             analysisResult = AppController.Instance.resp;
             Debug.Log(analysisResult.ToString());
 
-            _currentScreen = 0;
+            getResults();
 
-            UIResumen.GetComponent<RectTransform>().localScale = Vector3.one;
-            UIResumen.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIRes1.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIRes2.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIMejora.GetComponent<RectTransform>().localScale = Vector3.zero;
+            UIResumen.SetActive(true);
+            UIRes1.SetActive(false);
+            UIRes2.SetActive(false);
+            UIMejora.SetActive(false);
             ErrorMSG.SetActive(false);
 
-            getResults();
         } else {
-            UIResumen.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIRes1.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIRes2.GetComponent<RectTransform>().localScale = Vector3.zero;
-            UIMejora.GetComponent<RectTransform>().localScale = Vector3.zero;
+            UIResumen.SetActive(false);
+            UIRes1.SetActive(false);
+            UIRes2.SetActive(false);
+            UIMejora.SetActive(false);
             ErrorMSG.SetActive(true);
 
             sideButtonL.enabled = false;
@@ -55,57 +51,50 @@ public class UIManagerResult : MonoBehaviour
 
     public void MoveRight()
     {
-        switch (_currentScreen)
+        if(UIResumen.activeSelf)
         {
-            case 0:
-                UIResumen.transform.localScale = Vector3.zero;
-                UIRes1.transform.localScale = Vector3.one;
-                break;
-            case 1:
-                UIRes1.transform.localScale = Vector3.zero;
-                UIRes2.transform.localScale = Vector3.one;
-                break;
-            case 2:
-                UIRes2.transform.localScale = Vector3.zero;
-                UIMejora.transform.localScale = Vector3.one;
-                break;
-            case 3:
-                UIMejora.transform.localScale = Vector3.zero;
-                UIResumen.transform.localScale = Vector3.one;
-                break;
+            UIResumen.SetActive(false);
+            UIRes1.SetActive(true);
+        } 
+        else if(UIRes1.activeSelf)
+        {
+            UIRes1.SetActive(false);
+            UIRes2.SetActive(true);
         }
-
-        _currentScreen++;
-        if (_currentScreen > 3) 
-            _currentScreen = 0;
+        else if(UIRes2.activeSelf)
+        {
+            UIRes2.SetActive(false);
+            UIMejora.SetActive(true);
+        } 
+        else if(UIMejora.activeSelf)
+        {
+            UIMejora.SetActive(false);
+            UIResumen.SetActive(true);
+        }
     }
 
     public void MoveLeft()
     {
-        switch (_currentScreen)
+        if (UIResumen.activeSelf)
         {
-            case 0:
-                UIResumen.GetComponent<RectTransform>().localScale = Vector3.zero;
-                UIResumen.transform.localScale = Vector3.zero;
-                UIMejora.transform.localScale = Vector3.one;
-                break;
-            case 1:
-                UIRes1.transform.localScale = Vector3.zero;
-                UIResumen.transform.localScale = Vector3.one;
-                break;
-            case 2:
-                UIRes2.transform.localScale = Vector3.zero;
-                UIRes1.transform.localScale = Vector3.one;
-                break;
-            case 3:
-                UIMejora.transform.localScale = Vector3.zero;
-                UIRes2.transform.localScale = Vector3.one;
-                break;
+            UIResumen.SetActive(false);
+            UIMejora.SetActive(true);
         }
-
-        _currentScreen++;
-        if (_currentScreen < 0)
-            _currentScreen = 3;
+        else if (UIRes1.activeSelf)
+        {
+            UIRes1.SetActive(false);
+            UIResumen.SetActive(true);
+        }
+        else if (UIRes2.activeSelf)
+        {
+            UIRes2.SetActive(false);
+            UIRes1.SetActive(true);
+        }
+        else if (UIMejora.activeSelf)
+        {
+            UIMejora.SetActive(false);
+            UIRes2.SetActive(true);
+        }
     }
 
 
@@ -119,10 +108,6 @@ public class UIManagerResult : MonoBehaviour
         var oratory = analysisResult.data.feedback.oratory_expert;
         var recruiter = analysisResult.data.feedback.recruiter_verdict;
         var plan = analysisResult.data.feedback.improvement_plan;
-
-        Debug.Log("CHECK: " + UIResumen.transform.Find("Confidence").GetComponent<TMP_Text>().text);
-        Debug.Log("CHECK: " + UIRes1.transform.Find("Puntuacion").GetComponent<TMP_Text>().text);
-        Debug.Log("CHECK: " + (oratory != null ? oratory.score.ToString() : "N/A"));
 
         //UI 0: Resumen de calidad
         UIResumen.transform.Find("PercentFiller").GetComponent<TMP_Text>().text = "Porcentaje de \"palabras relleno\": " + quality.fillerPercentage.ToString();
