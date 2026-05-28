@@ -1488,6 +1488,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2d1bae9c9c776a40b34e2c662937b6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  FadeManager: {fileID: 475931899}
   statusText: {fileID: 0}
   feedbackText: {fileID: 0}
   loginButton: {fileID: 0}
@@ -1495,6 +1496,33 @@ MonoBehaviour:
   emailInput: {fileID: 0}
   passwordInput: {fileID: 0}
   testAudioFile: sampleES.m4a
+  resp:
+    success: 0
+    sessionId: 
+    data:
+      transcript: 
+      metrics:
+        duration_seconds: 0
+        word_count: 0
+        wpm: 0
+        pause_percentage: 0
+        average_confidence: 0
+      feedback:
+        oratory_expert:
+          score: 0
+          summary: 
+          strengths: []
+          weaknesses: []
+          pacing_feedback: 
+        recruiter_verdict:
+          passed: 0
+          decision_rationale: 
+          star_method_check: 
+          soft_skills: []
+          red_flags: []
+        improvement_plan:
+          immediate_action: 
+          long_term_advice: 
 --- !u!1 &422158381
 GameObject:
   m_ObjectHideFlags: 0
